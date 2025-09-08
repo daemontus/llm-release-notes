@@ -74,8 +74,22 @@ def commits_on_range(repo_dir: str, base: str, head: str) -> Tuple[bool, List[st
     return True, [line.rstrip() for line in out.splitlines()]
 
 
-def diff_between(repo_dir: str, base: str, head: str) -> str:
-    """Return a binary-safe unified diff for base..head (no color)."""
-    return run_git(["diff", f"{base}..{head}", "--binary", "--no-color"], cwd=repo_dir)
+def diff_between(repo_dir: str, base: str, head: str, exclude_paths: Optional[List[str]] = None) -> str:
+    """Return a binary-safe unified diff for base..head (no color).
+
+    If exclude_paths are provided, they're passed as repeated pathspec exclusions
+    using the ':!path' syntax supported by git to ignore specific paths.
+    """
+    args = ["diff", f"{base}..{head}", "--binary", "--no-color"]
+    if exclude_paths:
+        # Use pathspec magic to exclude. Works with Git 2.13+: ':!(path)' or ':!path'
+        # We append them after "--" so they are treated as pathspecs.
+        args.append("--")
+        for p in exclude_paths:
+            # Ensure no leading/trailing whitespace
+            p = p.strip()
+            if p:
+                args.append(f":!{p}")
+    return run_git(args, cwd=repo_dir)
 
 

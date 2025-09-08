@@ -4,7 +4,7 @@ import os
 import re
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import yaml
 
@@ -95,6 +95,7 @@ class ReleaseNotesConfig:
     prompts: Dict[str, Dict[str, str]] = None
     model_name: str = "gemini-2.5-flash"
     project_prompt: Optional[str] = None
+    diff_exclude_paths: Optional[List[str]] = None
 
     @staticmethod
     def load(config_path: Optional[str], repo_root: Optional[str]) -> "ReleaseNotesConfig":
@@ -112,13 +113,14 @@ class ReleaseNotesConfig:
                 path = candidate
         if path is None or not os.path.isfile(path):
             logging.getLogger(__name__).info("Config not provided, using defaults")
-            return ReleaseNotesConfig(project_type="library", public_api_command=None, prompts=DEFAULT_PROMPTS, model_name="gemini-2.5-flash", project_prompt=None)
+            return ReleaseNotesConfig(project_type="library", public_api_command=None, prompts=DEFAULT_PROMPTS, model_name="gemini-2.5-flash", project_prompt=None, diff_exclude_paths=None)
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         project_type = data.get("project_type", "library")
         public_api_command = data.get("public_api_command")
         model_name = data.get("gemini_model", "gemini-2.5-flash")
         project_prompt = data.get("project_prompt")
+        diff_exclude_paths = data.get("diff_exclude_paths") or None
         prompts = DEFAULT_PROMPTS.copy()
         user_prompts = data.get("prompts") or {}
         for domain, entries in user_prompts.items():
@@ -128,13 +130,14 @@ class ReleaseNotesConfig:
                 prompts[domain][k] = v
         log = logging.getLogger(__name__)
         log.info(
-            "Loaded config: project_type=%s, model_name=%s, public_api_command=%s, project_prompt_len=%s",
+            "Loaded config: project_type=%s, model_name=%s, public_api_command=%s, project_prompt_len=%s, diff_excludes=%s",
             project_type,
             model_name,
             "yes" if bool(public_api_command) else "no",
             len(project_prompt) if project_prompt else 0,
+            len(diff_exclude_paths) if diff_exclude_paths else 0,
         )
-        return ReleaseNotesConfig(project_type=project_type, public_api_command=public_api_command, prompts=prompts, model_name=model_name, project_prompt=project_prompt)
+        return ReleaseNotesConfig(project_type=project_type, public_api_command=public_api_command, prompts=prompts, model_name=model_name, project_prompt=project_prompt, diff_exclude_paths=diff_exclude_paths)
 
 
 SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")

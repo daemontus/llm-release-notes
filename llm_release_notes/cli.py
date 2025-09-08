@@ -33,6 +33,7 @@ def cmd_diff_context(args: argparse.Namespace) -> None:
         head=args.head,
         output_dir=args.output_dir,
         public_api_command=cfg.public_api_command,
+        diff_exclude_paths=cfg.diff_exclude_paths,
     )
 
 

@@ -71,6 +71,7 @@ def generate_diff_context(
     head: str,
     output_dir: str,
     public_api_command: Optional[str] = None,
+    diff_exclude_paths: Optional[List[str]] = None,
 ) -> DiffContextResult:
     repo_dir = clone_or_fetch(repo_url)
 
@@ -78,7 +79,22 @@ def generate_diff_context(
 
     # Code diff
     logging.getLogger(__name__).info("Computing git diff for %s..%s", base, head)
-    code_diff = diff_between(repo_dir, base, head)
+    # Respect explicitly provided excludes; otherwise best-effort load from repo config
+    exclude_paths = diff_exclude_paths
+    if exclude_paths is None:
+        try:
+            from .config import ReleaseNotesConfig as _C
+            cfg = _C.load(None, repo_dir)
+            exclude_paths = cfg.diff_exclude_paths
+        except Exception:
+            exclude_paths = None
+    if exclude_paths:
+        logging.getLogger(__name__).info(
+            "Excluding %d path(s) from diff: %s",
+            len(exclude_paths),
+            ", ".join(exclude_paths),
+        )
+    code_diff = diff_between(repo_dir, base, head, exclude_paths=exclude_paths)
     write_file(os.path.join(output_dir, "code.diff"), code_diff)
 
     # Commits and compatibility
