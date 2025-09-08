@@ -102,13 +102,14 @@ def synthesize_notes_for_range(
     temp_output_dir: str,
 ) -> str:
     logging.getLogger(__name__).info("Generating context for %s..%s", base, head)
-    ctx = generate_diff_context(repo_url, base, head, temp_output_dir, public_api_command=config.public_api_command)
+    _ctx = generate_diff_context(repo_url, base, head, temp_output_dir, public_api_command=config.public_api_command)
     # choose prompt
     change_type = determine_change_type(head)
     prompt = config.prompts.get(config.project_type, {}).get(change_type) or config.prompts["library"][change_type]
     # call LLM
     files = build_llm_files_list(temp_output_dir)
-    logging.getLogger(__name__).info("Calling LLM with %d context file(s)", len(files))
+    names = [ os.path.basename(f) for f in files ]
+    logging.getLogger(__name__).info("Calling LLM with %d context file(s): %s", len(files), str(names))
     model_name = getattr(config, "model_name", "gemini-2.5-flash")
     return generate_text_from_context(prompt, files, model=model_name)
 
