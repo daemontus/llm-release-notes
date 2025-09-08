@@ -89,7 +89,7 @@ def select_comparisons_single_version(target_version: str, all_tags: List[str]) 
 
 def build_llm_files_list(context_dir: str) -> List[str]:
     files = []
-    for name in ("code.diff", "commits.log", "public_api.diff", "public_api_base.txt", "public_api_head.txt"):
+    for name in ("code.diff", "commits.log", "public_api.diff"):
         path = os.path.join(context_dir, name)
         if os.path.isfile(path):
             files.append(path)
