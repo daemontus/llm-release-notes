@@ -7,6 +7,7 @@ We shell out to `git` to avoid bringing a heavy library; errors are wrapped in
 import os
 import shutil
 import subprocess
+import logging
 import tempfile
 from typing import List, Optional, Tuple
 
@@ -74,13 +75,15 @@ def commits_on_range(repo_dir: str, base: str, head: str) -> Tuple[bool, List[st
     return True, [line.rstrip() for line in out.splitlines()]
 
 
-def diff_between(repo_dir: str, base: str, head: str, exclude_paths: Optional[List[str]] = None) -> str:
+def diff_between(repo_dir: str, base: str, head: str, exclude_paths: Optional[List[str]] = None, compact: bool = False) -> str:
     """Return a binary-safe unified diff for base..head (no color).
 
     If exclude_paths are provided, they're passed as repeated pathspec exclusions
     using the ':!path' syntax supported by git to ignore specific paths.
     """
     args = ["diff", f"{base}..{head}", "--binary", "--no-color"]
+    if compact: # Remove all context from the diff output.
+        args.append("--unified=0")
     if exclude_paths:
         # Use pathspec magic to exclude. Works with Git 2.13+: ':!(path)' or ':!path'
         # We append them after "--" so they are treated as pathspecs.
@@ -90,6 +93,16 @@ def diff_between(repo_dir: str, base: str, head: str, exclude_paths: Optional[Li
             p = p.strip()
             if p:
                 args.append(f":!{p}")
-    return run_git(args, cwd=repo_dir)
+    diff = run_git(args, cwd=repo_dir)
+    logging.getLogger(__name__).info("Diff length: %s", len(diff))
+    if len(diff) / 4 > 2 ** 19: # estimated 1/2 of the token window of gemini models 
+        if not compact:
+            logging.getLogger(__name__).info("Diff is very long (estimated %d tokens). Re-running with compact options.", len(diff) / 4)
+            return diff_between(repo_dir, base, head, exclude_paths, compact=True)
+        else:
+            logging.getLogger(__name__).error("Diff is very long (estimated %d tokens). Cutting to length...", len(diff) / 4)
+            max_length = 2 ** 19 * 4
+            return diff[0:max_length]
+    return diff
 
 
