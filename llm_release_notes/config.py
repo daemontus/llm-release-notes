@@ -17,6 +17,7 @@ DEFAULT_PROMPTS = {
             "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
             "Feel free to use emojis and make references to methods and classes in the codebase, but do not give code examples."
             "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', and 'Other significant changes'. Omit empty sections."
+            "If the commits or pull requests resolve specific issues, you can link these issues in the release notes (e.g. Issue #5)"
         ),
         "minor_change": (
             "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
@@ -26,6 +27,7 @@ DEFAULT_PROMPTS = {
             "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
             "Feel free to use emojis and make references to methods and classes in the codebase, but do not give code examples."
             "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', and 'Other significant changes'. Omit empty sections."
+            "If the commits or pull requests resolve specific issues, you can link these issues in the release notes (e.g. Issue #5)"
         ),
         "bugfix": (
             "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
@@ -35,6 +37,7 @@ DEFAULT_PROMPTS = {
             "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
             "Feel free to use emojis and make references to methods and classes in the codebase, but do not give code examples."
             "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', 'Bug fixes' and 'Other changes'. Omit empty sections."
+            "If the commits or pull requests resolve specific issues, you can link these issues in the release notes (e.g. Issue #5)"
         ),
     },
     "application": {
@@ -46,6 +49,7 @@ DEFAULT_PROMPTS = {
             "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
             "Feel free to use emojis or nice formatting features, but do not talk about code changes, methods, or classes in the codebase; focus on user-facing features."
             "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', 'Bug fixes' and 'Other changes'. Omit empty sections."
+            "If the commits or pull requests resolve specific issues, you can link these issues in the release notes (e.g. Issue #5)"
         ),
         "minor_change": (
             "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
@@ -55,6 +59,7 @@ DEFAULT_PROMPTS = {
             "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
             "Feel free to use emojis or nice formatting features, but do not talk about code changes, methods, or classes in the codebase; focus on user-facing features."
             "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', 'Bug fixes' and 'Other changes'. Omit empty sections."
+            "If the commits or pull requests resolve specific issues, you can link these issues in the release notes (e.g. Issue #5)"
         ),
         "bugfix": (
             "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
@@ -64,6 +69,7 @@ DEFAULT_PROMPTS = {
             "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
             "Feel free to use emojis or nice formatting features, but do not talk about code changes, methods, or classes in the codebase; focus on user-facing features."
             "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', 'Bug fixes' and 'Other changes'. Omit empty sections."
+            "If the commits or pull requests resolve specific issues, you can link these issues in the release notes (e.g. Issue #5)"
         ),
     },
 }
