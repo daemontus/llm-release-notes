@@ -12,6 +12,7 @@ from .git_utils import (
     diff_between,
     verify_ref_exists,
 )
+from .github_api import fetch_pr_discussion
 
 
 PR_PATTERNS = [
@@ -82,6 +83,13 @@ def generate_diff_context(
 
     # Ensure pr_discussions directory exists per spec
     os.makedirs(os.path.join(output_dir, "pr_discussions"), exist_ok=True)
+
+    # Fetch PR discussions as part of diff context (requires GITHUB_TOKEN)
+    if pr_numbers:
+        pr_dir = os.path.join(output_dir, "pr_discussions")
+        for pr in pr_numbers:
+            discussion = fetch_pr_discussion(repo_url, pr)
+            write_file(os.path.join(pr_dir, f"PR-{pr}.txt"), discussion)
 
     # Optional public API diffs
     if public_api_command:
