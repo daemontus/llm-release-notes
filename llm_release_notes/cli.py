@@ -12,14 +12,20 @@ from .synthesizer import select_comparisons_single_version, synthesize_notes_for
 
 
 def cmd_diff_context(args: argparse.Namespace) -> None:
-    # TODO: Populate repo_root to resolve config correctly.
-    cfg = ReleaseNotesConfig.load(args.config, None)
+    # Ensure repo is available so .releasenotes.yml in repo root can be resolved
+    repo_dir = clone_or_fetch(args.repo)
+    cfg = ReleaseNotesConfig.load(args.config, repo_dir)
     logging.getLogger(__name__).info(
         "Generating diff context: repo=%s base=%s head=%s output=%s",
         args.repo,
         args.base,
         args.head,
         args.output_dir,
+    )
+    logging.getLogger(__name__).info(
+        "Settings: public_api_command=%s, config=%s",
+        "yes" if bool(cfg.public_api_command) else "no",
+        args.config or "repo/.releasenotes.yml or defaults",
     )
     generate_diff_context(
         repo_url=args.repo,
