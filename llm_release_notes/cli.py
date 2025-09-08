@@ -36,13 +36,16 @@ def cmd_synthesize(args: argparse.Namespace) -> None:
     output_path = args.output
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
+    # We intentionally do not put the version number here, because it is already displayed by GitHub GUI
+    preamble = f"*(this summary is LLM-generated, but validated by project developers)*\n\n"
+
     if args.previous_version:
         if not (verify_ref_exists(repo_dir, args.previous_version) and verify_ref_exists(repo_dir, args.version)):
             raise SystemExit("Provided tags do not exist in repository")
         with tempfile.TemporaryDirectory(prefix="rn_ctx_") as tmp:
             logging.getLogger(__name__).info("Synthesizing notes for explicit range %s..%s", args.previous_version, args.version)
             notes = synthesize_notes_for_range(args.repo, args.previous_version, args.version, cfg, tmp)
-        write_file(output_path, notes)
+        write_file(output_path, preamble + notes)
         return
 
     # Single-version mode
@@ -57,7 +60,7 @@ def cmd_synthesize(args: argparse.Namespace) -> None:
             section_body = synthesize_notes_for_range(args.repo, base, head, cfg, tmp)
         title = f"## Changes Since {base}"
         sections.append(f"{title}\n\n{section_body}\n")
-    write_file(output_path, "\n".join(sections))
+    write_file(output_path, preamble + "\n".join(sections))
 
 
 def build_parser() -> argparse.ArgumentParser:

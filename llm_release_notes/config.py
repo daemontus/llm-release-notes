@@ -8,28 +8,62 @@ import yaml
 
 DEFAULT_PROMPTS = {
     "library": {
+        # These prompts mainly differ in the specifics of what the model should focus on, but are otherwise the same in terms of tone/general instructions.
         "major_change": (
             "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
-            "generate release notes for this new MAJOR version. Focus on: 1) API-breaking changes, 2) migrations, 3) deprecated removals."
+            "generate release notes for this new version of a library. Make sure to include all API-breaking changes, deprecations or significant new features."
+            "Do not focus too much on bug fixes or minor changes."
+            "Never mention the actual version number or type of release in the output. Do not write any introductory paragraphs, just list/describe changes directly."
+            "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
+            "Feel free to use emojis and make references to methods and classes in the codebase, but do not give code examples."
+            "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', and 'Other significant changes'. Omit empty sections."
         ),
         "minor_change": (
             "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
-            "generate release notes for this MINOR version. Focus on: 1) new API features, 2) deprecations, 3) important fixes."
+            "generate release notes for this new version of a library. Make sure to include all API-breaking changes, deprecations and especially new features."
+            "Do not focus too much on bug fixes or other minor changes."
+            "Never mention the actual version number or type of release in the output. Do not write any introductory paragraphs, just list/describe changes directly."
+            "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
+            "Feel free to use emojis and make references to methods and classes in the codebase, but do not give code examples."
+            "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', and 'Other significant changes'. Omit empty sections."
         ),
         "bugfix": (
             "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
-            "generate release notes for this PATCH version. Focus on bug fixes and stability improvements."
+            "generate release notes for this new version of a library. Make sure to include all API-breaking changes, deprecations or significant new features."
+            "Focus also on bug fixes and all other minor changes."
+            "Never mention the actual version number or type of release in the output. Do not write any introductory paragraphs, just list/describe changes directly."
+            "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
+            "Feel free to use emojis and make references to methods and classes in the codebase, but do not give code examples."
+            "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', 'Bug fixes' and 'Other changes'. Omit empty sections."
         ),
     },
     "application": {
         "major_change": (
-            "You are an expert technical writer. Summarize significant user-facing feature changes or removals. Highlight breaking changes and migration steps."
+            "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
+            "generate release notes for this new version of an application. Make sure to include all breaking changes, deprecations or significant new features."
+            "Do not focus too much on bug fixes or minor changes."
+            "Never mention the actual version number or type of release in the output. Do not write any introductory paragraphs, just list/describe changes directly."
+            "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
+            "Feel free to use emojis or nice formatting features, but do not talk about code changes, methods, or classes in the codebase; focus on user-facing features."
+            "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', 'Bug fixes' and 'Other changes'. Omit empty sections."
         ),
         "minor_change": (
-            "You are an expert technical writer. Summarize new user-facing features and enhancements."
+            "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
+            "generate release notes for this new version of an application. Make sure to include all breaking changes, deprecations or significant new features."
+            "Do not focus too much on bug fixes or other minor changes."
+            "Never mention the actual version number or type of release in the output. Do not write any introductory paragraphs, just list/describe changes directly."
+            "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
+            "Feel free to use emojis or nice formatting features, but do not talk about code changes, methods, or classes in the codebase; focus on user-facing features."
+            "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', 'Bug fixes' and 'Other changes'. Omit empty sections."
         ),
         "bugfix": (
-            "You are an expert technical writer. Summarize bug fixes and behavioral corrections."
+            "You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), "
+            "generate release notes for this new version of an application. Make sure to include all breaking changes, deprecations or significant new features."
+            "Focus also on bug fixes and all other minor changes."
+            "Never mention the actual version number or type of release in the output. Do not write any introductory paragraphs, just list/describe changes directly."
+            "Your tone should be professional and informative, even formal. Avoid expressing emotions, like excitement, or call to action statements (like 'update to new version today to get these features')."
+            "Feel free to use emojis or nice formatting features, but do not talk about code changes, methods, or classes in the codebase; focus on user-facing features."
+            "Structure your summary into sections (in this order) titled 'API-breaking changes', 'New features', 'Bug fixes' and 'Other changes'. Omit empty sections."
         ),
     },
 }
