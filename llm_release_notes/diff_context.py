@@ -45,7 +45,9 @@ class DiffContextResult:
 
 
 def write_file(path: str, content: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    dirpath = os.path.dirname(path)
+    if dirpath:
+        os.makedirs(dirpath, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
 
