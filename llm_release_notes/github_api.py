@@ -1,3 +1,5 @@
+"""GitHub API helpers for fetching PR discussions."""
+
 import os
 from typing import List, Optional
 
@@ -5,6 +7,7 @@ from github import Github
 
 
 def get_github_client() -> Github:
+    """Create an authenticated GitHub client or raise if token missing."""
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         raise RuntimeError("GITHUB_TOKEN is required to fetch PR discussions")
@@ -12,6 +15,7 @@ def get_github_client() -> Github:
 
 
 def parse_owner_repo_from_url(repo_url: str) -> Optional[tuple[str, str]]:
+    """Extract (owner, repo) from an SSH or HTTPS GitHub URL."""
     # Supports ssh and https
     # git@github.com:owner/repo.git or https://github.com/owner/repo(.git)
     if repo_url.startswith("git@github.com:"):
@@ -32,6 +36,7 @@ def parse_owner_repo_from_url(repo_url: str) -> Optional[tuple[str, str]]:
 
 
 def fetch_pr_discussion(repo_url: str, pr_number: int) -> str:
+    """Fetch PR body, issue comments, review comments, and reviews as plain text."""
     owner_repo = parse_owner_repo_from_url(repo_url)
     if not owner_repo:
         raise RuntimeError("Unsupported GitHub repository URL format")

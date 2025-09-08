@@ -1,3 +1,5 @@
+"""Command-line interface for the Release Notes tool."""
+
 import argparse
 import logging
 import os
@@ -10,6 +12,7 @@ from .synthesizer import select_comparisons_single_version, synthesize_notes_for
 
 
 def cmd_diff_context(args: argparse.Namespace) -> None:
+    # TODO: Populate repo_root to resolve config correctly.
     cfg = ReleaseNotesConfig.load(args.config, None)
     logging.getLogger(__name__).info(
         "Generating diff context: repo=%s base=%s head=%s output=%s",
@@ -51,6 +54,9 @@ def cmd_synthesize(args: argparse.Namespace) -> None:
     # Single-version mode
     comparisons = select_comparisons_single_version(args.version, tags)
     logging.getLogger(__name__).info("Selected %d comparison(s) for version %s", len(comparisons), args.version)
+    logging.getLogger(__name__).info(
+        "Settings: project_type=%s, model=%s, config=%s", cfg.project_type, cfg.model_name, args.config or "default"
+    )
     sections = []
     for base, head in comparisons:
         if not base:

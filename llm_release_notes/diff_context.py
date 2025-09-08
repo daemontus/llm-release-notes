@@ -1,3 +1,8 @@
+"""Builds a rich diff context directory for a pair of Git refs.
+
+Outputs include code diff, commit logs, PR discussions, and optional public API diff.
+"""
+
 import os
 import logging
 import re
@@ -39,12 +44,14 @@ def extract_pr_numbers(commit_message: str) -> List[int]:
 
 @dataclass
 class DiffContextResult:
+    """Metadata about the generated diff context."""
     output_dir: str
     pr_numbers: List[int]
     compatible_history: bool
 
 
 def write_file(path: str, content: str) -> None:
+    """Write text to a file, creating parent directory if necessary."""
     dirpath = os.path.dirname(path)
     if dirpath:
         os.makedirs(dirpath, exist_ok=True)
@@ -53,6 +60,7 @@ def write_file(path: str, content: str) -> None:
 
 
 def run_public_api_command(repo_dir: str, command: str) -> str:
+    """Execute the public API command and capture stdout (stderr ignored)."""
     res = subprocess.run(command, cwd=repo_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return res.stdout
 

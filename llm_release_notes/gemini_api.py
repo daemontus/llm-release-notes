@@ -1,3 +1,5 @@
+"""Gemini API wrapper for text generation from a set of context files."""
+
 import os
 from typing import List
 
@@ -5,6 +7,7 @@ import google.generativeai as genai
 
 
 def get_gemini_client() -> None:
+    """Configure the Gemini SDK from environment variable GEMINI_API_KEY."""
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is required for Gemini API")
@@ -12,6 +15,11 @@ def get_gemini_client() -> None:
 
 
 def generate_text_from_context(prompt: str, files: List[str], model: str = "gemini-2.5-flash") -> str:
+    """Generate text using Gemini by concatenating the prompt and context files.
+
+    Note: For simplicity we concatenate file content; for very large contexts,
+    consider streaming or chunking strategies.
+    """
     get_gemini_client()
     # Concatenate files as a single long input. For true multi-part, use files API; kept simple here.
     contents: List[str] = []
