@@ -11,7 +11,7 @@ def get_gemini_client() -> None:
     genai.configure(api_key=api_key)
 
 
-def generate_text_from_context(prompt: str, files: List[str], model: str = "gemini-1.5-pro") -> str:
+def generate_text_from_context(prompt: str, files: List[str], model: str = "gemini-2.5-flash") -> str:
     get_gemini_client()
     # Concatenate files as a single long input. For true multi-part, use files API; kept simple here.
     contents: List[str] = []

@@ -109,6 +109,7 @@ def synthesize_notes_for_range(
     # call LLM
     files = build_llm_files_list(temp_output_dir)
     logging.getLogger(__name__).info("Calling LLM with %d context file(s)", len(files))
-    return generate_text_from_context(prompt, files)
+    model_name = getattr(config, "model_name", "gemini-2.5-flash")
+    return generate_text_from_context(prompt, files, model=model_name)
 
 

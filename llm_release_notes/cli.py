@@ -31,6 +31,8 @@ def cmd_synthesize(args: argparse.Namespace) -> None:
     repo_dir = clone_or_fetch(args.repo)
     tags = list_tags(repo_dir)
     cfg = ReleaseNotesConfig.load(args.config, repo_dir)
+    if getattr(args, "gemini_model", None):
+        cfg.model_name = args.gemini_model
     output_path = args.output
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
@@ -77,6 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_syn.add_argument("--previous-version")
     p_syn.add_argument("--config")
     p_syn.add_argument("--output", required=True)
+    p_syn.add_argument("--gemini-model", dest="gemini_model", help="Override Gemini model name (config gemini_model)")
     p_syn.set_defaults(func=cmd_synthesize)
     return p
 
