@@ -110,7 +110,14 @@ def synthesize_notes_for_range(
     temp_output_dir: str,
 ) -> str:
     logging.getLogger(__name__).info("Generating context for %s..%s", base, head)
-    _ctx = generate_diff_context(repo_url, base, head, temp_output_dir, public_api_command=config.public_api_command)
+    _ctx = generate_diff_context(
+        repo_url, 
+        base, 
+        head, 
+        temp_output_dir, 
+        public_api_command=config.public_api_command, 
+        diff_exclude_paths=config.diff_exclude_paths
+    )
     # choose prompt
     change_type = determine_change_type(head)
     base_prompt = config.prompts.get(config.project_type, {}).get(change_type) or config.prompts["library"][change_type]
