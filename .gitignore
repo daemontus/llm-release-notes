@@ -1,2 +1,4 @@
 .tmp_context
 __pycache__
+build
+*.egg-info

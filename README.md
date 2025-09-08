@@ -86,3 +86,70 @@ prompts:
       Summarize major user-facing changes...
 ```
 
+### GitHub Actions example (generate notes and create a draft release)
+Below is a minimal workflow that: installs dependencies, runs the synthesizer on tag push, and creates a draft release with the generated notes.
+
+Save as `.github/workflows/release-notes.yml` in your repository:
+
+```yaml
+name: Generate Release Notes
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  generate-notes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # required to create a release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install llm-release-notes
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install git+https://github.com/daemontus/llm-release-notes.git
+
+      - name: Determine version
+        id: version
+        run: |
+          TAG_REF="${GITHUB_REF#refs/tags/}"
+          echo "tag=${TAG_REF}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          source .venv/bin/activate
+          python -m llm_release_notes.cli --verbose synthesize \
+            --repo ${{ github.repositoryUrl }} \
+            --version ${{ steps.version.outputs.tag }} \
+            --output release-notes.md \
+            --config .releasenotes.yml
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          draft: true
+          body_path: release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Notes:
+- Ensure `.releasenotes.yml` exists at repo root, ideally with `public_api_command` configured (especially for libraries).
+- Set `GEMINI_API_KEY` in your repository secrets.
+- By default GitHub provides `GITHUB_TOKEN` to workflows; it’s used to fetch PR discussions and create the release.
+
