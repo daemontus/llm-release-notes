@@ -75,6 +75,7 @@ class ReleaseNotesConfig:
     public_api_command: Optional[str] = None
     prompts: Dict[str, Dict[str, str]] = None
     model_name: str = "gemini-2.5-flash"
+    project_prompt: Optional[str] = None
 
     @staticmethod
     def load(config_path: Optional[str], repo_root: Optional[str]) -> "ReleaseNotesConfig":
@@ -84,12 +85,13 @@ class ReleaseNotesConfig:
             if os.path.isfile(candidate):
                 path = candidate
         if path is None or not os.path.isfile(path):
-            return ReleaseNotesConfig(project_type="library", public_api_command=None, prompts=DEFAULT_PROMPTS, model_name="gemini-2.5-flash")
+            return ReleaseNotesConfig(project_type="library", public_api_command=None, prompts=DEFAULT_PROMPTS, model_name="gemini-2.5-flash", project_prompt=None)
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         project_type = data.get("project_type", "library")
         public_api_command = data.get("public_api_command")
         model_name = data.get("gemini_model", "gemini-2.5-flash")
+        project_prompt = data.get("project_prompt")
         prompts = DEFAULT_PROMPTS.copy()
         user_prompts = data.get("prompts") or {}
         for domain, entries in user_prompts.items():
@@ -97,7 +99,7 @@ class ReleaseNotesConfig:
                 prompts[domain] = {}
             for k, v in (entries or {}).items():
                 prompts[domain][k] = v
-        return ReleaseNotesConfig(project_type=project_type, public_api_command=public_api_command, prompts=prompts, model_name=model_name)
+        return ReleaseNotesConfig(project_type=project_type, public_api_command=public_api_command, prompts=prompts, model_name=model_name, project_prompt=project_prompt)
 
 
 SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")

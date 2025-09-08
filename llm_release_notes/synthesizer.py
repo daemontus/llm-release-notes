@@ -113,7 +113,11 @@ def synthesize_notes_for_range(
     _ctx = generate_diff_context(repo_url, base, head, temp_output_dir, public_api_command=config.public_api_command)
     # choose prompt
     change_type = determine_change_type(head)
-    prompt = config.prompts.get(config.project_type, {}).get(change_type) or config.prompts["library"][change_type]
+    base_prompt = config.prompts.get(config.project_type, {}).get(change_type) or config.prompts["library"][change_type]
+    if config.project_prompt:
+        prompt = base_prompt + "\n\nProject specific instructions:\n" + config.project_prompt
+    else:
+        prompt = base_prompt
     # call LLM
     files = build_llm_files_list(temp_output_dir)
     names = [ os.path.basename(f) for f in files ]
