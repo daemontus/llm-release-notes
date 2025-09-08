@@ -66,27 +66,28 @@ def generate_text_from_context(prompt: str, files: List[str], model: str = "gemi
         logging.getLogger(__name__).info("No files were successfully uploaded. Aborting.")
         return ""
 
-    logging.getLogger(__name__).info("All files uploaded. Sending prompt to Gemini model '%s'.", model)
-    
-    model_obj = genai.GenerativeModel(model)
-    
-    # The prompt now consists of the text instruction AND the list of file references
-    resp = model_obj.generate_content([prompt] + uploaded_files)
-    
-    # Clean up the uploaded files to avoid incurring storage costs
-    logging.getLogger(__name__).info("Cleaning up uploaded files...")
-    for file_ref in uploaded_files:
-        try:
-            genai.delete_file(file_ref.name)
-            logging.getLogger(__name__).info("  - Deleted %s", file_ref.display_name)
-        except Exception as e:
-            logging.getLogger(__name__).error("  - Failed to delete %s: %s", file_ref.display_name, e)
-
     try:
-        logging.getLogger(__name__).info("Prompt done. Usage: %s", resp.usage_metadata)
-        return resp.text
-    except ValueError:
-        logging.getLogger(__name__).error("Warning: Response was blocked. Returning empty string.")
-        logging.getLogger(__name__).error("Prompt Feedback: %s", resp.prompt_feedback)
-        return ""
+        logging.getLogger(__name__).info("All files uploaded. Sending prompt to Gemini model '%s'.", model)
+        
+        # The prompt now consists of the text instruction AND the list of file references
+        resp = model_obj.generate_content([prompt] + uploaded_files)
+        model_obj = genai.GenerativeModel(model)
+
+        try:
+            logging.getLogger(__name__).info("Prompt done. Usage: %s", resp.usage_metadata)
+            return resp.text
+        except ValueError:
+            logging.getLogger(__name__).error("Warning: Response was blocked. Returning empty string.")
+            logging.getLogger(__name__).error("Prompt Feedback: %s", resp.prompt_feedback)
+            return ""
+    finally:    
+        # Clean up the uploaded files to avoid incurring storage costs
+        logging.getLogger(__name__).info("Cleaning up uploaded files...")
+        for file_ref in uploaded_files:
+            try:
+                genai.delete_file(file_ref.name)
+                logging.getLogger(__name__).info("  - Deleted %s", file_ref.display_name)
+            except Exception as e:
+                logging.getLogger(__name__).error("  - Failed to delete %s: %s", file_ref.display_name, e)
+
 
