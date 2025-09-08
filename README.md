@@ -150,6 +150,7 @@ jobs:
 
 Notes:
 - Ensure `.releasenotes.yml` exists at repo root, ideally with `public_api_command` configured (especially for libraries).
+- Ensure the github action can *clone* the repository using the `git` URL (`github.repositoryUrl`). If this is a public repository, you can just replace this with the `https` url, but for private repositories, you'll need to setup correct SSH keys or something similar (better support hopefully coming soon).
 - Set `GEMINI_API_KEY` in your repository secrets.
 - By default GitHub provides `GITHUB_TOKEN` to workflows; it’s used to fetch PR discussions and create the release.
 
