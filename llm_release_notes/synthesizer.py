@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import List, Optional, Tuple
 
 import semver
@@ -100,19 +101,14 @@ def synthesize_notes_for_range(
     config: ReleaseNotesConfig,
     temp_output_dir: str,
 ) -> str:
+    logging.getLogger(__name__).info("Generating context for %s..%s", base, head)
     ctx = generate_diff_context(repo_url, base, head, temp_output_dir, public_api_command=config.public_api_command)
-    # fetch PR discussions
-    if ctx.pr_numbers:
-        pr_dir = os.path.join(temp_output_dir, "pr_discussions")
-        os.makedirs(pr_dir, exist_ok=True)
-        for pr in ctx.pr_numbers:
-            text = fetch_pr_discussion(repo_url, pr)
-            write_file(os.path.join(pr_dir, f"PR-{pr}.txt"), text)
     # choose prompt
     change_type = determine_change_type(head)
     prompt = config.prompts.get(config.project_type, {}).get(change_type) or config.prompts["library"][change_type]
     # call LLM
     files = build_llm_files_list(temp_output_dir)
+    logging.getLogger(__name__).info("Calling LLM with %d context file(s)", len(files))
     return generate_text_from_context(prompt, files)
 
 

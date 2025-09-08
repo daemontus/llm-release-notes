@@ -1,4 +1,5 @@
 import os
+import logging
 import re
 import shutil
 import subprocess
@@ -66,10 +67,12 @@ def generate_diff_context(
     os.makedirs(output_dir, exist_ok=True)
 
     # Code diff
+    logging.getLogger(__name__).info("Computing git diff for %s..%s", base, head)
     code_diff = diff_between(repo_dir, base, head)
     write_file(os.path.join(output_dir, "code.diff"), code_diff)
 
     # Commits and compatibility
+    logging.getLogger(__name__).info("Collecting commits for %s..%s", base, head)
     compatible, commits = commits_on_range(repo_dir, base, head)
     if not compatible:
         write_file(os.path.join(output_dir, "commits.log"), "Incompatible history.\n")
@@ -80,6 +83,7 @@ def generate_diff_context(
         for msg in commits:
             pr_numbers.extend(extract_pr_numbers(msg))
         pr_numbers = sorted(set(pr_numbers))
+        logging.getLogger(__name__).info("Detected %d PR(s) in commit messages", len(pr_numbers))
 
     # Ensure pr_discussions directory exists per spec
     os.makedirs(os.path.join(output_dir, "pr_discussions"), exist_ok=True)
@@ -88,16 +92,19 @@ def generate_diff_context(
     if pr_numbers:
         pr_dir = os.path.join(output_dir, "pr_discussions")
         for pr in pr_numbers:
+            logging.getLogger(__name__).info("Fetching PR discussion #%s", pr)
             discussion = fetch_pr_discussion(repo_url, pr)
             write_file(os.path.join(pr_dir, f"PR-{pr}.txt"), discussion)
 
     # Optional public API diffs
     if public_api_command:
         # base
+        logging.getLogger(__name__).info("Running public API command on base %s", base)
         checkout_ref(repo_dir, base)
         base_api = run_public_api_command(repo_dir, public_api_command)
         write_file(os.path.join(output_dir, "public_api_base.txt"), base_api)
         # head
+        logging.getLogger(__name__).info("Running public API command on head %s", head)
         checkout_ref(repo_dir, head)
         head_api = run_public_api_command(repo_dir, public_api_command)
         write_file(os.path.join(output_dir, "public_api_head.txt"), head_api)
