@@ -1,0 +1,152 @@
+### **Project Specification: Automated Release Note Generator**
+
+### 1. Overview
+
+This document outlines the requirements for a software tool designed to automate the generation of comprehensive release notes for software projects hosted on GitHub. The tool will go beyond traditional methods that rely solely on commit messages by creating a detailed "diff context" package and feeding it to a Large Language Model (LLM) to produce human-readable release notes.
+
+The tool will consist of two primary modules:
+1.  **Diff Context Generator:** A utility that gathers all relevant changes between two points in a Git repository's history.
+2.  **Release Note Synthesizer:** A utility that uses the generated context and an LLM to write the final release notes, with logic tailored to the type of version change (major, minor, bugfix).
+
+### 2. Core Functionality
+
+The application should be developed primarily in Python, but may orchestrate shell commands (e.g., `git`, custom scripts) where appropriate.
+
+#### 2.1 Module 1: Diff Context Generator
+
+This module is responsible for collecting all necessary information to describe the changes between two reference points in a Git repository.
+
+**Inputs:**
+*   `--repo <URL>`: The full URL to a public GitHub repository.
+*   `--base <ref>`: The base reference point (e.g., a tag like `v1.0.0`, or a commit hash).
+*   `--head <ref>`: The head reference point (e.g., `v1.1.0`).
+*   `--output-dir <path>`: A local directory path to save the generated context files.
+
+**Processing Steps:**
+1.  The tool will clone or fetch the specified repository into a temporary local directory.
+2.  It will check out the two specified reference points (`base` and `head`).
+3.  It will generate a complete code diff between the two points and save it to a file. For binary files, the output should note that the file has changed, similar to a standard `git diff` or GitHub pull request view.
+4.  It will extract all commit messages on the shared history between the `base` and `head` references.
+    *   **Industry Standard Practice:** This should be accomplished using a command like `git log base..head --oneline`.
+    *   If the two references do not share a common history, the output file should contain only the message: "Incompatible history."
+5.  It will analyze the commit messages to identify any that correspond to merged GitHub Pull Requests (e.g., messages ending with `(#123)`).
+6.  For each identified pull request, it will use the GitHub API to fetch the complete text-based discussion (comments from the PR author and reviewers) and save it to a separate file. All non-text content (images, attachments) should be stripped.
+7.  If a configuration for a "public API command" is provided (see Section 3), the tool will:
+    *   Check out the `base` reference and execute the command, saving its standard output.
+    *   Check out the `head` reference and execute the command, saving its standard output.
+    *   Generate a diff between the two API outputs.
+
+**Outputs:**
+The tool will create the specified output directory and populate it with the following files:
+
+```
+<output-dir>/
+├── code.diff                 # Full git diff between base and head.
+├── commits.log               # List of commit messages.
+├── pr_discussions/           # Directory for PR discussions.
+│   ├── PR-123.txt            # Text discussion for Pull Request #123.
+│   └── PR-456.txt            # Text discussion for Pull Request #456.
+├── public_api_base.txt       # (Optional) Output of API command on base.
+├── public_api_head.txt       # (Optional) Output of API command on head.
+└── public_api.diff           # (Optional) Diff of the two API outputs.
+```
+
+---
+
+#### 2.2 Module 2: Release Note Synthesizer
+
+This module orchestrates the Diff Context Generator and uses its output to create the final release notes via an LLM.
+
+**Inputs:**
+*   `--repo <URL>`: The URL to the GitHub repository.
+*   `--version <tag>`: The primary version tag for which to generate notes (e.g., `v1.2.0`). This must conform to the Semantic Versioning (SemVer) standard (`X.Y.Z`), optionally prefixed with a `v`.
+*   `--previous-version <tag>`: (Optional) The specific version to compare against.
+*   `--config <path>`: (Optional) Path to a configuration file.
+
+**Operating Modes:**
+
+**A. Two-Version Mode (explicit comparison):**
+If both `--version` and `--previous-version` are provided:
+1.  The tool verifies that both tags exist in the repository.
+2.  It invokes **Module 1** using the two tags as `head` and `base` respectively.
+3.  It constructs a prompt for the LLM based on the configuration (see Section 3). The prompt will instruct the LLM to summarize the provided context, highlighting breaking changes, new features, and bug fixes, while ignoring trivial changes.
+4.  It sends the prompt and the entire contents of the diff context directory as context to the Google Gemini API.
+5.  The LLM's response is captured and saved as the final release notes.
+
+**B. Single-Version Mode (automatic comparison):**
+If only `--version` is provided:
+1.  The tool determines the appropriate base version(s) to compare against by inspecting the repository's tags.
+2.  The comparison logic is as follows:
+    *   **Bugfix Release (e.g., `v1.2.3` -> `v1.2.2`):** The tool finds the immediately preceding tag on the same minor branch. It performs one comparison.
+    *   **Minor Release (e.g., `v1.2.0`):** The tool performs two separate comparisons and generates two sets of notes:
+        1.  Against the latest preceding tag (e.g., `v1.1.5`).
+        2.  Against the previous minor version's base (e.g., `v1.1.0`).
+    *   **Major Release (e.g., `v2.0.0`):** The tool performs up to three separate comparisons:
+        1.  Against the latest preceding tag (e.g., `v1.5.2`).
+        2.  Against the previous minor version's base (e.g., `v1.5.0`, if applicable).
+        3.  Against the previous major version's base (e.g., `v1.0.0`).
+
+3.  The outputs from each comparison will be collated into a single Markdown file. Each section will be clearly demarcated with a heading, for example: `## Changes Since v1.5.2` and `## Summary of Changes Since v1.0.0`.
+
+#### 2.3 Final Output
+
+*   The final output of the Release Note Synthesizer is a single **Markdown (`.md`) file**.
+*   The content is the generated text from the LLM, formatted according to the prompts.
+*   In cases where multiple comparisons are made (Single-Version Mode for minor/major releases), the output file will contain multiple sections, each with a Markdown heading indicating the comparison range (e.g., `## Changes Since <version>`).
+
+### 3. Configuration
+
+The tool's behavior should be customizable via a configuration file.
+
+*   **Industry Standard Practice:** A YAML file (e.g., `.releasenotes.yml`) located in the root of the target repository is the preferred method. A path to a config file can also be provided via the `--config` flag.
+
+**Configuration Options:**
+
+*   `project_type`: `library` or `application`. This determines which set of prompts to use.
+*   `public_api_command`: A string containing a shell command that, when executed, prints the project's public API to standard output.
+    *   Example for Rust: `cargo public-api`
+*   `prompts`: An object containing custom LLM prompts. The tool must provide sensible defaults for all prompts. The structure should be:
+    *   `library`:
+        *   `major_change`: Prompt focusing on API-breaking changes.
+        *   `minor_change`: Prompt focusing on new API features and additions.
+        *   `bugfix`: Prompt focusing on bug fixes and patches within the existing API.
+    *   `application`:
+        *   `major_change`: Prompt focusing on significant user-facing feature changes or removals.
+        *   `minor_change`: Prompt focusing on new user-facing features.
+        *   `bugfix`: Prompt focusing on fixes to application behavior.
+
+**Example `config.yml`:**
+```yaml
+project_type: library
+public_api_command: "cargo public-api --diff-no-blanket-impls"
+
+prompts:
+  library:
+    minor_change: |
+      You are an expert technical writer. Based on the provided context (code diff, commit logs, PR discussions, and API diff), generate release notes for this new minor version.
+      Focus on:
+      1. New features and additions to the public API.
+      2. Deprecated functions or types.
+      3. Important bug fixes.
+      Please format the output in Markdown.
+    # ... other prompts for bugfix, major_change, etc.
+  application:
+    # ... prompts for application project type
+```
+
+### 4. Technical Requirements & Stack
+
+*   **Language:** Python 3.8+
+*   **Dependencies:**
+    *   A Python library for interacting with the Google Gemini API.
+    *   A Python library for interacting with the GitHub REST API.
+*   **System Tools:** The tool assumes `git` is installed and available in the system's PATH.
+*   **Authentication:** The tool will require API keys for the GitHub API and the Google Gemini API.
+    *   **Industry Standard Practice:** These keys should be provided via environment variables (e.g., `GITHUB_TOKEN`, `GEMINI_API_KEY`) and not hard-coded.
+
+### 5. Assumptions & Constraints
+
+*   The user will provide valid GitHub repository URLs.
+*   The user will provide valid and existing tags or commit hashes as reference points.
+*   The tool will operate on repositories with a linear or merge-based history. Complex, rebased histories without a clear path between versions may produce less useful results.
+*   API keys with sufficient permissions will be available in the environment.
