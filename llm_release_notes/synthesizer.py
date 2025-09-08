@@ -57,26 +57,32 @@ def select_comparisons_single_version(target_version: str, all_tags: List[str]) 
         latest_preceding = previous_tags[-1] if previous_tags else None
         previous_minor_base = f"v{major}.{minor-1}.0" if minor > 0 else None
         comps: List[Tuple[str, str]] = []
-        if latest_preceding:
+        seen_bases: set[str] = set()
+        if latest_preceding and latest_preceding not in seen_bases:
             comps.append((latest_preceding, target_version))
-        if previous_minor_base and any(tag == previous_minor_base for _, tag in semver_sorted):
+            seen_bases.add(latest_preceding)
+        if previous_minor_base and any(tag == previous_minor_base for _, tag in semver_sorted) and previous_minor_base not in seen_bases:
             comps.append((previous_minor_base, target_version))
+            seen_bases.add(previous_minor_base)
         return comps
 
     # major
     latest_preceding = previous_tags[-1] if previous_tags else None
     previous_minor_base = f"v{major-1}.x"  # not a tag; derive last minor of previous major
     prev_major_base = f"v{major-1}.0.0" if major > 0 else None
-    comps = []
-    if latest_preceding:
+    comps: List[Tuple[str, str]] = []
+    seen_bases: set[str] = set()
+    if latest_preceding and latest_preceding not in seen_bases:
         comps.append((latest_preceding, target_version))
+        seen_bases.add(latest_preceding)
     # previous major base: exact tag
-    if prev_major_base and any(tag == prev_major_base for _, tag in semver_sorted):
+    if prev_major_base and any(tag == prev_major_base for _, tag in semver_sorted) and prev_major_base not in seen_bases:
         comps.append((prev_major_base, target_version))
+        seen_bases.add(prev_major_base)
     # previous minor base: best-effort pick highest v{major-1}.X.0
     if major > 0:
         candidates = [tag for vi, tag in semver_sorted if vi.major == major - 1 and vi.patch == 0]
-        if candidates:
+        if candidates and candidates[-1] not in seen_bases:
             comps.append((candidates[-1], target_version))
     return comps
 
