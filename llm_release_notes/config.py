@@ -8,6 +8,8 @@ from typing import Dict, Optional, List
 
 import yaml
 
+from .exceptions import ConfigError
+
 
 # Default prompt templates used when user configuration does not override them
 DEFAULT_PROMPTS = {
@@ -113,9 +115,19 @@ class ReleaseNotesConfig:
                 path = candidate
         if path is None or not os.path.isfile(path):
             logging.getLogger(__name__).info("Config not provided, using defaults")
-            return ReleaseNotesConfig(project_type="library", public_api_command=None, prompts=DEFAULT_PROMPTS, model_name="gemini-2.5-flash", project_prompt=None, diff_exclude_paths=None)
-        with open(path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
+            return ReleaseNotesConfig(
+                project_type="library",
+                public_api_command=None,
+                prompts=DEFAULT_PROMPTS,
+                model_name="gemini-2.5-flash",
+                project_prompt=None,
+                diff_exclude_paths=None,
+            )
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+        except (IOError, yaml.YAMLError) as e:
+            raise ConfigError(f"Error loading config file from {path}: {e}") from e
         project_type = data.get("project_type", "library")
         public_api_command = data.get("public_api_command")
         model_name = data.get("gemini_model", "gemini-2.5-flash")

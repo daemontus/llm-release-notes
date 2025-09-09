@@ -3,14 +3,16 @@
 import os
 from typing import List, Optional
 
-from github import Github
+from github import Github, GithubException
+
+from .exceptions import GitHubAPIError
 
 
 def get_github_client() -> Github:
     """Create an authenticated GitHub client or raise if token missing."""
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
-        raise RuntimeError("GITHUB_TOKEN is required to fetch PR discussions")
+        raise GitHubAPIError("GITHUB_TOKEN is required to fetch PR discussions")
     return Github(login_or_token=token)
 
 
@@ -39,11 +41,14 @@ def fetch_pr_discussion(repo_url: str, pr_number: int) -> str:
     """Fetch PR body, issue comments, review comments, and reviews as plain text."""
     owner_repo = parse_owner_repo_from_url(repo_url)
     if not owner_repo:
-        raise RuntimeError("Unsupported GitHub repository URL format")
+        raise GitHubAPIError("Unsupported GitHub repository URL format")
     owner, repo = owner_repo
     gh = get_github_client()
-    repository = gh.get_repo(f"{owner}/{repo}")
-    pr = repository.get_pull(pr_number)
+    try:
+        repository = gh.get_repo(f"{owner}/{repo}")
+        pr = repository.get_pull(pr_number)
+    except GithubException as e:
+        raise GitHubAPIError(f"Failed to fetch PR #{pr_number} from {repo_url}: {e}") from e
     # Collect body and comments
     parts: List[str] = []
     if pr.title:
@@ -59,5 +64,6 @@ def fetch_pr_discussion(repo_url: str, pr_number: int) -> str:
         if r.body:
             parts.append(f"\nReview by {r.user.login} at {r.submitted_at}:\n{r.body}")
     return "\n".join(parts)
+
 
 

@@ -11,10 +11,7 @@ import logging
 import tempfile
 from typing import List, Optional, Tuple
 
-
-class GitError(RuntimeError):
-    """Raised when a git command fails."""
-    pass
+from .exceptions import GitError
 
 
 def run_git(args: List[str], cwd: Optional[str] = None, check: bool = True) -> str:

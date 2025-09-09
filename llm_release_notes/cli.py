@@ -3,10 +3,12 @@
 import argparse
 import logging
 import os
+import sys
 import tempfile
 
 from .config import ReleaseNotesConfig
 from .diff_context import generate_diff_context, write_file
+from .exceptions import llmReleaseNotesError
 from .git_utils import clone_or_fetch, list_tags, verify_ref_exists
 from .synthesizer import select_comparisons_single_version, synthesize_notes_for_range
 
@@ -103,8 +105,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-    logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="[%(levelname)s] %(message)s")
-    args.func(args)
+    logging.basicConfig(
+        level=logging.INFO if args.verbose else logging.WARNING, format="[%(levelname)s] %(message)s"
+    )
+    try:
+        args.func(args)
+    except llmReleaseNotesError as e:
+        logging.getLogger(__name__).error(e)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
