@@ -29,6 +29,9 @@ dependencies = [
 [project.scripts]
 llm-release-notes = "llm_release_notes.cli:main"
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
 [tool.setuptools]
 packages = ["llm_release_notes"]
 
