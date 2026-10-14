@@ -19,8 +19,8 @@ class GitHubAPIError(llmReleaseNotesError):
     pass
 
 
-class GeminiAPIError(llmReleaseNotesError):
-    """Raised for errors related to the Gemini API."""
+class LLMAPIError(llmReleaseNotesError):
+    """Raised for errors related to the LLM API."""
 
     pass
 

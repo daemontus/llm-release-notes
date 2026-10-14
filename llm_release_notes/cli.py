@@ -8,19 +8,21 @@ import tempfile
 
 from .config import ReleaseNotesConfig
 from .diff_context import generate_diff_context, write_file
-from .exceptions import llmReleaseNotesError
-from .git_utils import clone_or_fetch, list_tags, verify_ref_exists
-from .synthesizer import select_comparisons_single_version, synthesize_notes_for_range
+from .exceptions import LLMAPIError, llmReleaseNotesError
+from .git_utils import checkout_ref, clone_or_fetch, list_tags, verify_ref_exists
+from .synthesizer import comparison_title, select_comparisons_single_version, synthesize_notes_for_range
 
 
 def cmd_diff_context(args: argparse.Namespace) -> None:
     # Ensure repo is available so .releasenotes.yml in repo root can be resolved
     repo_dir = clone_or_fetch(args.repo)
+    # The fresh working copy has nothing checked out; use the config from the head ref.
+    checkout_ref(repo_dir, args.head)
     cfg = ReleaseNotesConfig.load(args.config, repo_dir)
     logging.getLogger(__name__).info(
         "Generating diff context: repo=%s base=%s head=%s output=%s",
         args.repo,
-        args.base,
+        args.base or "(empty repository)",
         args.head,
         args.output_dir,
     )
@@ -42,18 +44,30 @@ def cmd_diff_context(args: argparse.Namespace) -> None:
 def cmd_synthesize(args: argparse.Namespace) -> None:
     repo_dir = clone_or_fetch(args.repo)
     tags = list_tags(repo_dir)
+    if not verify_ref_exists(repo_dir, args.version):
+        raise llmReleaseNotesError(f"Version {args.version} does not exist in repository")
+    # The fresh working copy has nothing checked out; use the config from the released version.
+    checkout_ref(repo_dir, args.version)
     cfg = ReleaseNotesConfig.load(args.config, repo_dir)
-    if getattr(args, "gemini_model", None):
-        cfg.model_name = args.gemini_model
+    if args.model:
+        cfg.model = args.model
+    if args.base_url:
+        cfg.base_url = args.base_url
+    if args.max_context_tokens:
+        cfg.max_context_tokens = args.max_context_tokens
+    cfg.validate_for_synthesis()
+    # Fail fast, before the (possibly long) context generation.
+    if not os.environ.get(cfg.api_key_env):
+        raise LLMAPIError(f"Environment variable {cfg.api_key_env} with the LLM API key is not set")
     output_path = args.output
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     # We intentionally do not put the version number here, because it is already displayed by GitHub GUI
-    preamble = f"*(this summary is LLM-generated, but validated by project developers)*\n\n"
+    preamble = "*(this summary is LLM-generated, but validated by project developers)*\n\n"
 
     if args.previous_version:
         if not (verify_ref_exists(repo_dir, args.previous_version) and verify_ref_exists(repo_dir, args.version)):
-            raise SystemExit("Provided tags do not exist in repository")
+            raise llmReleaseNotesError(f"Version {args.previous_version} does not exist in repository")
         with tempfile.TemporaryDirectory(prefix="rn_ctx_") as tmp:
             logging.getLogger(__name__).info("Synthesizing notes for explicit range %s..%s", args.previous_version, args.version)
             notes = synthesize_notes_for_range(args.repo, args.previous_version, args.version, cfg, tmp)
@@ -64,17 +78,15 @@ def cmd_synthesize(args: argparse.Namespace) -> None:
     comparisons = select_comparisons_single_version(args.version, tags)
     logging.getLogger(__name__).info("Selected %d comparison(s) for version %s", len(comparisons), args.version)
     logging.getLogger(__name__).info(
-        "Settings: project_type=%s, model=%s, config=%s", cfg.project_type, cfg.model_name, args.config or "default"
+        "Settings: project_type=%s, model=%s, config=%s", cfg.project_type, cfg.model, args.config or "default"
     )
     sections = []
     for base, head in comparisons:
-        if not base:
-            continue
+        title = comparison_title(base, head)
         with tempfile.TemporaryDirectory(prefix="rn_ctx_") as tmp:
-            logging.getLogger(__name__).info("Synthesizing notes for range %s..%s", base, head)
+            logging.getLogger(__name__).info("Synthesizing notes: %s", title)
             section_body = synthesize_notes_for_range(args.repo, base, head, cfg, tmp)
-        title = f"## Changes Since {base}"
-        sections.append(f"{title}\n\n{section_body}\n")
+        sections.append(f"## {title}\n\n{section_body}\n")
     write_file(output_path, preamble + "\n".join(sections))
 
 
@@ -85,7 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_diff = sub.add_parser("diff-context", help="Generate diff context between two refs")
     p_diff.add_argument("--repo", required=True)
-    p_diff.add_argument("--base", required=True)
+    p_diff.add_argument("--base", help="Base ref; omit to compare against an empty repository (first release)")
     p_diff.add_argument("--head", required=True)
     p_diff.add_argument("--output-dir", required=True)
     p_diff.add_argument("--config", required=False)
@@ -97,7 +109,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_syn.add_argument("--previous-version")
     p_syn.add_argument("--config")
     p_syn.add_argument("--output", required=True)
-    p_syn.add_argument("--gemini-model", dest="gemini_model", help="Override Gemini model name (config gemini_model)")
+    p_syn.add_argument("--model", help="Model name (overrides config 'model')")
+    p_syn.add_argument("--base-url", help="Base URL of the OpenAI-compatible endpoint (overrides config 'base_url')")
+    p_syn.add_argument(
+        "--max-context-tokens", type=int, help="Context window of the model in tokens (overrides config 'max_context_tokens')"
+    )
     p_syn.set_defaults(func=cmd_synthesize)
     return p
 

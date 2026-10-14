@@ -3,10 +3,10 @@
 Outputs include code diff, commit logs, PR discussions, and optional public API diff.
 """
 
+import difflib
 import os
 import logging
 import re
-import shutil
 import subprocess
 from dataclasses import dataclass
 from typing import List, Optional
@@ -16,7 +16,6 @@ from .git_utils import (
     clone_or_fetch,
     commits_on_range,
     diff_between,
-    verify_ref_exists,
 )
 from .github_api import fetch_pr_discussion
 
@@ -60,34 +59,37 @@ def write_file(path: str, content: str) -> None:
 
 
 def run_public_api_command(repo_dir: str, command: str) -> str:
-    """Execute the public API command and capture stdout (stderr ignored)."""
+    """Execute the public API command and capture stdout (stderr is only logged on failure)."""
     res = subprocess.run(command, cwd=repo_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if res.returncode != 0:
+        logging.getLogger(__name__).warning(
+            "Public API command exited with code %d; the API diff may be incomplete. Stderr:\n%s",
+            res.returncode,
+            res.stderr.strip(),
+        )
     return res.stdout
 
 
 def generate_diff_context(
     repo_url: str,
-    base: str,
+    base: Optional[str],
     head: str,
     output_dir: str,
     public_api_command: Optional[str] = None,
     diff_exclude_paths: Optional[List[str]] = None,
 ) -> DiffContextResult:
+    """Write the diff context for base..head into output_dir.
+
+    If base is None, head is compared against an empty repository (first release).
+    """
     repo_dir = clone_or_fetch(repo_url)
+    range_name = f"{base}..{head}" if base else f"(empty)..{head}"
 
     os.makedirs(output_dir, exist_ok=True)
 
     # Code diff
-    logging.getLogger(__name__).info("Computing git diff for %s..%s", base, head)
-    # Respect explicitly provided excludes; otherwise best-effort load from repo config
+    logging.getLogger(__name__).info("Computing git diff for %s", range_name)
     exclude_paths = diff_exclude_paths
-    if exclude_paths is None:
-        try:
-            from .config import ReleaseNotesConfig as _C
-            cfg = _C.load(None, repo_dir)
-            exclude_paths = cfg.diff_exclude_paths
-        except Exception:
-            exclude_paths = None
     if exclude_paths:
         logging.getLogger(__name__).info(
             "Excluding %d path(s) from diff: %s",
@@ -98,7 +100,7 @@ def generate_diff_context(
     write_file(os.path.join(output_dir, "code.diff"), code_diff)
 
     # Commits and compatibility
-    logging.getLogger(__name__).info("Collecting commits for %s..%s", base, head)
+    logging.getLogger(__name__).info("Collecting commits for %s", range_name)
     compatible, commits = commits_on_range(repo_dir, base, head)
     if not compatible:
         write_file(os.path.join(output_dir, "commits.log"), "Incompatible history.\n")
@@ -120,30 +122,33 @@ def generate_diff_context(
         for pr in pr_numbers:
             logging.getLogger(__name__).info("Fetching PR discussion #%s", pr)
             discussion = fetch_pr_discussion(repo_url, pr)
+            if discussion is None:
+                continue
             write_file(os.path.join(pr_dir, f"PR-{pr}.txt"), discussion)
 
     # Optional public API diffs
     if public_api_command:
-        # base
-        logging.getLogger(__name__).info("Running public API command on base %s", base)
-        checkout_ref(repo_dir, base)
-        base_api = run_public_api_command(repo_dir, public_api_command)
+        # base (an empty repository has no public API)
+        if base:
+            logging.getLogger(__name__).info("Running public API command on base %s", base)
+            checkout_ref(repo_dir, base)
+            base_api = run_public_api_command(repo_dir, public_api_command)
+        else:
+            base_api = ""
         write_file(os.path.join(output_dir, "public_api_base.txt"), base_api)
         # head
         logging.getLogger(__name__).info("Running public API command on head %s", head)
         checkout_ref(repo_dir, head)
         head_api = run_public_api_command(repo_dir, public_api_command)
         write_file(os.path.join(output_dir, "public_api_head.txt"), head_api)
-        # diff
-        # Use unified diff via system diff for readability
-        a_path = os.path.join(output_dir, "public_api_base.txt")
-        b_path = os.path.join(output_dir, "public_api_head.txt")
-        try:
-            res = subprocess.run(["diff", "-u", a_path, b_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            write_file(os.path.join(output_dir, "public_api.diff"), res.stdout)
-        except FileNotFoundError:
-            # diff is not available; fallback simple marker
-            write_file(os.path.join(output_dir, "public_api.diff"), "diff tool not available on system\n")
+        # diff (labels instead of temporary paths and timestamps, which would only be noise for the model)
+        api_diff = difflib.unified_diff(
+            base_api.splitlines(keepends=True),
+            head_api.splitlines(keepends=True),
+            fromfile=f"public_api@{base or '(empty)'}",
+            tofile=f"public_api@{head}",
+        )
+        write_file(os.path.join(output_dir, "public_api.diff"), "".join(api_diff))
 
     return DiffContextResult(output_dir=output_dir, pr_numbers=pr_numbers, compatible_history=compatible)
 
